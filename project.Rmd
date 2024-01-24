@@ -1,0 +1,60 @@
+---
+title: "Prediction Assignment"
+author: "Jennifer Banks"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
+```
+## Executive Summary
+This project analyzes data obtained from accelerometers on the belt, forearm, dumbell and arm of participants, each of whom was asked to perform barbell exercises both correctly, and in 5 different incorrect ways. We will analyze the data, select and implement a model to predict the manner in which the test subjects did the exercise, based on a classification system A-E.  We will use the prediciton model to predict 20 different test cases.  Data was obtained from http://groupware.les.inf.puc-rio.br/har. 
+
+## Download and Clean the Data
+After reading in the training and testing data, I remove from both sets the variables that appear logically inapplicable, such as subject name, various time stamp references, and all summary statistics (e.g., totals, standard deviations, and variances calculated on the raw data), in order to analyze the raw collected data only. 
+```{r}
+library(caret)
+library(ggplot2)
+library(lattice)
+library(randomForest)
+train <- read.csv("pml-training.csv")
+test <- read.csv("pml-testing.csv")
+train1<-train[,-c(1:7, 12:36, 49:59, 69:83, 87:101, 103:112, 125:139, 141:150)]
+test1<-test[,-c(1:7, 12:36, 49:59, 69:83, 87:101, 103:112, 125:139, 141:150, 160)]
+```
+
+## Create Validation Set
+In order to validate my eventual model selection, I split the training set into a 70:20 training/validation split.
+```{r}
+tsplit <- createDataPartition(y=train1$classe, p=0.7, list=FALSE)
+training <- train1[tsplit, ]
+validating <- train1[-tsplit, ]
+```
+
+## Model Selection
+I selected a random forest model approach, due to its high accuracy rate  and the large number of variables.  This method performed 5-fold cross validation, as shown below.
+```{r}
+controlRf <- trainControl(method="cv", 5)
+fit <- train(classe ~ ., data=training, method="rf", trControl=controlRf)
+fit
+```
+
+## Apply Model to Validation Set
+I then apply the model to the validation set to gauge accuracy and out of sample error.
+```{r}
+pred<-predict(fit, validating)
+cf<-confusionMatrix(table(pred, validating$classe))
+cf
+```
+We see that our model produced accuracy of `r cf$overall[1]` and an out-of-sample error of `r 1-cf$overall[1]`.  Based on this data, I will consider the model successful and apply it to our test data.
+
+## Apply Model to Test Data
+Application of the model to the test data yields the prediction results below.
+```{r}
+testpred<-predict(fit, test1)
+testpred
+```
+
+
+
